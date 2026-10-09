@@ -1,32 +1,37 @@
-# BTC Finder
+# LostBTC Hunter
 
-A small, mobile-friendly Bitcoin mainnet public-address checker, based on the uploaded BTC Finder preview.
+A mobile-friendly, public Bitcoin mainnet activity explorer based on Brian's supplied interface. Published with GitHub Pages from `main` / repository root.
 
 ## Features
 
-- Check up to 10 supplied public addresses per search.
-- Show confirmed balances, pending net changes and transaction counts.
-- Show up to 25 recent transactions for an address.
-- Save a named watchlist in this browser's local storage.
-- Export successfully checked balances to CSV with timestamps.
-- Link directly to Blockstream Explorer.
+- Famous addresses: the eight addresses in the supplied historical list, with live balances and activity checks.
+- Top holders: query Blockchair for 10–200 addresses ordered by balance; optional API key.
+- Paste list: check up to 200 public addresses, deduplicated before requests.
+- Adjustable dormancy threshold from 1–20 years and a dormant, unlabelled filter.
+- Confirmed balances and pending net changes displayed separately.
+- Summary totals by supplied address category, with failed and unknown-activity counts.
+- CSV export of all attempted addresses, timestamps and lookup status.
+- Stop a scan, save named addresses, and view up to 25 recent transactions.
+- Existing BTC Finder watchlists are preserved under the same local-storage key.
 
-There is no private-key search, seed vault, recovery engine or spending feature. A dormant address is not proof of lost funds. The original upload was a nonfunctional interface preview; this version implements public-address lookup.
+## Interpretation
 
-## Run
+Dormancy requires a positive confirmed balance, a successful activity lookup and confirmed activity older than the threshold. Pending activity is treated as active. Failed activity checks remain unknown and are excluded from dormant totals. No transaction history is not treated as infinite dormancy. Incoming payments count as activity.
 
-Open `index.html` in a modern browser with internet access, or serve this directory with `python3 -m http.server 8000` and open `http://localhost:8000`.
+The supplied historical and exchange labels are unverified, and may be outdated or incorrect. They are not proof of ownership, missing keys or unspendability. An address's current balance is separate from any historical block reward associated with it. This app does not search private keys, recover wallets, store seed phrases, or spend funds.
 
-## GitHub Pages
+## APIs and privacy
 
-In this repository, open **Settings → Pages**. Choose **Deploy from a branch**, then **main** and **/ (root)**, and save. GitHub will display the live app URL when deployment completes. Uploading code alone does not enable Pages.
+Public address requests go directly to [mempool.space](https://mempool.space/docs/api/rest). The top-holder list goes to [Blockchair](https://github.com/Blockchair/Blockchair.Support/blob/master/API_DOCUMENTATION_EN.md). Providers receive the query and normal network information, including the browser's IP address. No analytics or server is included.
 
-## Data and privacy
+Blockchair can reject unauthenticated requests, deny browser access, enforce plan limits or rate limit requests. Errors are shown rather than silently switching sources or reporting empty results as successful. A key may be required; no key is bundled. Top-holder responses were denied from the build environment with code 430, so a successful live top-holder query could not be verified.
 
-Requests go directly from the browser to [Blockstream's Esplora API](https://github.com/Blockstream/esplora/blob/master/API.md). That provider receives the searched addresses and normal network information, including your IP address. This repository has no server or analytics. Saved watchlists stay in local browser storage and are not synced between devices. Clearing browser storage removes them. No seed phrases or credentials should be entered.
+The optional key remains in the current page unless the user checks **Remember key on this device**. Remembered keys are stored unencrypted in browser local storage, sent only to Blockchair, and excluded from exports. Unchecking the option removes the saved key. Watchlists remain on the current device and are not synced.
 
-Balances are calculated in satoshis from funded outputs minus spent outputs. Confirmed balance and pending net change are shown separately. All addresses must be Bitcoin mainnet addresses; the explorer checks final validity. No data is fetched automatically at startup. API outages, browser restrictions and rate limits can prevent live searches. Failed requests are shown as errors, never as zero balances.
+## Run and deploy
+
+Open `index.html` in a modern browser, or serve this directory using `python3 -m http.server 8000`. Internet access is required for live data. GitHub Pages is configured to deploy from the `main` branch root.
 
 ## Validation
 
-Node checks with a simulated DOM and API cover successful responses, pending spending, invalid input, transactions, watchlist saving, duplicate prevention, rate limits and malformed responses. A live example address request also returned the expected API fields. Full browser and mobile visual checks were unavailable because the browser download failed in the build environment.
+Node tests with a simulated DOM and API cover preserved watchlists, duplicate removal, invalid input, confirmed dormancy, pending activity, unknown activity, failure displays, CSV escaping, top-list denials, control bounds, opt-in key storage and stopping scans. Live browser verification is performed after deployment.
