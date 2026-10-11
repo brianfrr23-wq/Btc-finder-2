@@ -1,0 +1,112 @@
+
+<div class="appbar">
+  <div class="ttl">
+    <h1><b>₿</b> LostBTC Hunter</h1>
+    <p>Dormant coins · wallet recovery <span class="dot" id="net"></span></p>
+  </div>
+  <button id="install" class="tbtn hidden">Install</button>
+</div>
+<div class="tabs">
+  <button class="pill" data-mode="seed">Seed / xpub</button>
+  <button class="pill active" data-mode="recover">Recover</button>
+  <button class="pill" data-mode="shuffle">Shuffle</button>
+  <button class="pill" data-mode="famous">Famous lost</button>
+  <button class="pill" data-mode="top">Top holders</button>
+  <button class="pill" data-mode="paste">Paste</button>
+</div>
+
+<main>
+  <div id="pane-seed" class="hidden">
+    <label class="f">BIP39 phrase, or xpub / ypub / zpub</label>
+    <textarea id="seed" placeholder="abandon abandon … about   —   or   zpub6r…"></textarea>
+    <label class="f">Passphrase (optional)</label>
+    <input id="seedpass" type="password" placeholder="leave blank if none" autocomplete="off">
+    <label class="f">Addresses to scan per type</label>
+    <input id="count" type="number" value="20" min="1" max="500">
+    <label class="f">Types</label>
+    <div class="chips">
+      <label class="chip"><input type="checkbox" id="t84" checked=""><span>bc1q</span></label>
+      <label class="chip"><input type="checkbox" id="t49"><span>3…</span></label>
+      <label class="chip"><input type="checkbox" id="t44"><span>1…</span></label>
+    </div>
+  </div>
+
+  <div id="pane-recover">
+    <label class="f">Phrase — <code>?</code> = missing · <code>~word</code> = right word, wrong order</label>
+    <textarea id="phrase" placeholder="abandon abandon ? ~about abandon abandon abandon ~zoo … about"></textarea>
+    <label class="f">Known address(es) — one per line (recommended)</label>
+    <textarea id="targets" placeholder="bc1q…"></textarea>
+    <label class="f">Passphrase (optional)</label>
+    <input id="rpass" type="password" placeholder="leave blank if none" autocomplete="off">
+    <label class="f">Try address index up to</label>
+    <input id="maxidx" type="number" value="0" min="0" max="20">
+    <label class="f">Types</label>
+    <div class="chips">
+      <label class="chip"><input type="checkbox" id="r84" checked=""><span>bc1q</span></label>
+      <label class="chip"><input type="checkbox" id="r49"><span>3…</span></label>
+      <label class="chip"><input type="checkbox" id="r44"><span>1…</span></label>
+      <label class="chip"><input type="checkbox" id="fuzz" checked=""><span>fix typos</span></label>
+    </div>
+    <div style="margin-top:14px"><button class="tbtn" id="selftest">Run self-test</button></div>
+    <p class="note" style="margin-top:10px">Blanks, shuffles and typos search together in a worker. Self-test checks official BIP84 / BIP39 vectors.</p>
+  </div>
+
+  <div id="pane-shuffle" class="hidden">
+    <label class="f">All the words you have (right words, unknown order)</label>
+    <textarea id="shuf" placeholder="about abandon abandon … zoo"></textarea>
+    <label class="f">Positions to shuffle — blank = all</label>
+    <input id="permpos" type="text" placeholder="e.g. 5-12  or  2,4,7-10">
+    <label class="f">Known address(es) — one per line</label>
+    <textarea id="stargets" placeholder="bc1q…"></textarea>
+    <label class="f">Passphrase (optional)</label>
+    <input id="spass" type="password" placeholder="leave blank if none" autocomplete="off">
+    <label class="f">Try address index up to</label>
+    <input id="smaxidx" type="number" value="0" min="0" max="20">
+    <label class="f">Types</label>
+    <div class="chips">
+      <label class="chip"><input type="checkbox" id="s84" checked=""><span>bc1q</span></label>
+      <label class="chip"><input type="checkbox" id="s49"><span>3…</span></label>
+      <label class="chip"><input type="checkbox" id="s44"><span>1…</span></label>
+    </div>
+    <p class="note" style="margin-top:10px">k positions = k! permutations. 8 ≈ seconds · 10 ≈ minutes · 12 ≈ hours.</p>
+  </div>
+
+  <div id="pane-famous" class="hidden">
+    <p class="note">Curated notorious dormant / unreachable addresses — genesis, Mt. Gox, early-era whales.</p>
+    <label class="f">Flag dormant after (years)</label>
+    <input id="years" type="number" value="5" min="1" max="20">
+    <div class="chips"><label class="chip"><input type="checkbox" id="onlycand"><span>only real candidates</span></label></div>
+  </div>
+
+  <div id="pane-top" class="hidden">
+    <label class="f">Pull top N addresses by balance</label>
+    <input id="topn" type="number" value="50" min="10" max="200">
+    <label class="f">Blockchair API key (optional, stored on device)</label>
+    <input id="apikey" type="password" placeholder="paste key or leave blank" autocomplete="off">
+    <label class="f">Flag dormant after (years)</label>
+    <input id="years2" type="number" value="5" min="1" max="20">
+    <div class="chips"><label class="chip"><input type="checkbox" id="onlycand2"><span>only real candidates</span></label></div>
+    <p class="note" style="margin-top:10px">Rich list includes exchange cold wallets — tagging separates those from real candidates.</p>
+  </div>
+
+  <div id="pane-paste" class="hidden">
+    <label class="f">One address per line</label>
+    <textarea id="list" placeholder="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"></textarea>
+    <label class="f">Flag dormant after (years)</label>
+    <input id="years3" type="number" value="5" min="1" max="20">
+    <div class="chips"><label class="chip"><input type="checkbox" id="onlycand3"><span>only real candidates</span></label></div>
+  </div>
+
+  <div id="status" class="status"></div>
+  <div class="bar hidden" id="bar"><i></i></div>
+  <div id="results"></div>
+</main>
+
+<div class="cta">
+  <button id="scan" class="go">Find seed</button>
+  <button id="stop" class="stop hidden">Stop</button>
+</div>
+<div class="toast" id="toast"></div>
+
+
+
