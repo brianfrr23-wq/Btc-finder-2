@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Seed Rescue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow working column. Tabs choose the job, one sticky action bar starts it, results appear under the form. */
+:root{
+  --bg:#F2F3EF; --surface:#FFFFFF; --field:#FAFBF8; --ink:#16201C; --muted:#58665F; --line:#D8DDD5;
+  --accent:#0E6B5B; --accent-ink:#FFFFFF; --accent-soft:#DDEEE8;
+  --ok:#1B7F4B; --ok-soft:#DCF1E4; --warn:#7A4E00; --warn-soft:#F6EAD0; --bad:#B3261E; --bad-soft:#F8DEDB;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Instrument Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1513; --surface:#172019; --field:#121A17; --ink:#E5ECE8; --muted:#97A69E; --line:#2A3630;
+  --accent:#4FC3A9; --accent-ink:#06201A; --accent-soft:#1A3A33;
+  --ok:#58C98B; --ok-soft:#173523; --warn:#E3B04B; --warn-soft:#2E2615; --bad:#F2877F; --bad-soft:#3A1D1B; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0F1513; --surface:#172019; --field:#121A17; --ink:#E5ECE8; --muted:#97A69E; --line:#2A3630;
+  --accent:#4FC3A9; --accent-ink:#06201A; --accent-soft:#1A3A33;
+  --ok:#58C98B; --ok-soft:#173523; --warn:#E3B04B; --warn-soft:#2E2615; --bad:#F2877F; --bad-soft:#3A1D1B; color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding-inline:16px;padding-block:20px 0;-webkit-text-size-adjust:100%}
+.app{max-width:640px;margin-inline:auto;display:flex;flex-direction:column;gap:16px;min-width:0}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+code{font-family:var(--mono);font-size:.92em;background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+
+.top{display:flex;flex-direction:column;gap:6px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{width:28px;height:28px;flex:none;color:var(--accent)}
+.brand h1{font-size:1.55rem;line-height:1.1;font-weight:700}
+.lede{color:var(--muted);max-width:60ch}
+
+.tabs{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.tab{flex:1;min-width:0;font:600 .9rem var(--body);color:var(--muted);background:transparent;border:0;border-radius:7px;padding:9px 6px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.tab:focus-visible,.chip input:focus-visible+span,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.pane{display:flex;flex-direction:column;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.lab{font-weight:600;font-size:.88rem}
+.hint{color:var(--muted);font-size:.85rem}
+textarea,input[type=text],input[type=number],input[type=password]{width:100%;font:400 .95rem var(--mono);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+textarea{min-height:92px;resize:vertical;line-height:1.5}
+textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+::placeholder{color:var(--muted);opacity:.7}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+details.more{border-top:1px solid var(--line);padding-top:12px}
+details.more>summary,details.check>summary{cursor:pointer;font-weight:600;font-size:.9rem;list-style-position:inside}
+details.more .inner{display:flex;flex-direction:column;gap:14px;padding-top:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.chip span{display:inline-block;padding:7px 12px;border:1px solid var(--line);border-radius:999px;font:500 .85rem var(--mono);background:var(--field);color:var(--muted)}
+.chip input:checked+span{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.example{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:.85rem}
+.example button{font:600 .85rem var(--body);color:inherit;background:transparent;border:1px solid currentColor;border-radius:6px;padding:4px 10px;cursor:pointer}
+
+.actions{position:sticky;bottom:0;display:flex;gap:10px;padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.primary,.secondary{font:600 1rem var(--body);border-radius:10px;padding:13px 18px;cursor:pointer;min-height:48px}
+.primary{flex:1;background:var(--accent);color:var(--accent-ink);border:0}
+.primary:disabled{opacity:.5;cursor:not-allowed}
+.secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.ghost{font:600 .85rem var(--body);color:var(--accent);background:transparent;border:1px solid var(--line);border-radius:7px;padding:6px 11px;cursor:pointer}
+
+.status{font-size:.9rem;color:var(--muted);min-height:1.4em}
+.status.err{color:var(--bad);font-weight:500}
+.notes{color:var(--muted);font-size:.85rem}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+#results{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card.ok{border-color:var(--ok)}
+.card h2{font-size:1.15rem}
+.pill{align-self:flex-start;font:600 .75rem var(--body);letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.addr{font:500 .85rem var(--mono);overflow-wrap:anywhere}
+.words{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(7.2rem,1fr));gap:6px}
+.words li{display:flex;gap:8px;align-items:baseline;padding:6px 9px;background:var(--field);border:1px solid var(--line);border-radius:7px;font:500 .88rem var(--mono);min-width:0}
+.words li b{font:400 .7rem var(--mono);color:var(--muted);min-width:1.4em;font-variant-numeric:tabular-nums}
+.words li.chg{background:var(--accent-soft);border-color:var(--accent)}
+.caution{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:.88rem}
+.tips{margin:0;padding-left:1.1em;color:var(--muted);font-size:.9rem;display:flex;flex-direction:column;gap:4px}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.list .li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--field)}
+.list .li:last-child{border-bottom:0}
+.list .n{font:400 .75rem var(--mono);color:var(--muted);min-width:2.2em;font-variant-numeric:tabular-nums}
+.list .addr{flex:1;min-width:0}
+.cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+details.check{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+details.check .inner{display:flex;flex-direction:column;gap:12px;padding-top:12px}
+.tests{display:flex;flex-direction:column;gap:6px;font-size:.88rem}
+.tests div{display:flex;gap:8px;align-items:baseline}
+.tests .ok{color:var(--ok);font-weight:600}
+.tests .bad{color:var(--bad);font-weight:600}
+.foot{color:var(--muted);font-size:.8rem;padding-bottom:8px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:.85rem;font-weight:500;padding:8px 14px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .15s}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.bar i,.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="16" r="6"/><path d="M17 16h12M25 16v5M21 16v4"/></svg>
+      <h1>Seed Rescue</h1>
+    </div>
+    <p class="lede">Recover your own wallet when a recovery phrase has a missing, misplaced or misspelled word. Everything runs on this device and nothing is sent anywhere.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Mode">
+    <button class="tab" role="tab" id="tab-recover" data-mode="recover" aria-selected="true">Recover</button>
+    <button class="tab" role="tab" id="tab-shuffle" data-mode="shuffle" aria-selected="false">Shuffle</button>
+    <button class="tab" role="tab" id="tab-derive" data-mode="derive" aria-selected="false">Derive</button>
+  </nav>
+
+  <main style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <section class="pane" id="pane-recover" role="tabpanel" aria-labelledby="tab-recover">
+      <div class="example" id="ex-recover"><span>Example loaded: a public test phrase with its last word missing.</span><button type="button" data-clear="phrase,targets,ex-recover">Clear</button></div>
+      <div class="field">
+        <label for="phrase">Your phrase</label>
+        <textarea id="phrase" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="word1 word2 ? word4 ~word5 …">abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon ?</textarea>
+        <p class="hint">Type <code>?</code> for a missing word and <code>~word</code> for a word you have but in the wrong place. Up to two <code>?</code> is practical.</p>
+      </div>
+      <div class="field">
+        <label for="targets">An address from this wallet</label>
+        <textarea id="targets" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="bc1q… or 3… or 1… (one per line)">bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu</textarea>
+        <p class="hint">Required. A phrase counts as found only when it produces an address you already know belongs to you.</p>
+      </div>
+      <details class="more"><summary>More options</summary>
+        <div class="inner">
+          <div class="row">
+            <div class="field"><label for="rpass">Passphrase</label><input id="rpass" type="password" autocomplete="off" placeholder="leave blank if none"></div>
+            <div class="field"><label for="maxidx">Check address index up to</label><input id="maxidx" type="number" value="0" min="0" max="20" inputmode="numeric"></div>
+          </div>
+          <div class="field"><span class="lab">Address types</span>
+            <div class="chips">
+              <label class="chip"><input type="checkbox" id="r84" checked><span>bc1q</span></label>
+              <label class="chip"><input type="checkbox" id="r49" checked><span>3…</span></label>
+              <label class="chip"><input type="checkbox" id="r44" checked><span>1…</span></label>
+              <label class="chip"><input type="checkbox" id="fuzz" checked><span>fix typos</span></label>
+            </div>
+            <p class="hint">The type is taken from the address you enter. Fix typos tries close matches for words that are not on the BIP39 list.</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="pane" id="pane-shuffle" role="tabpanel" aria-labelledby="tab-shuffle" hidden>
+      <div class="field">
+        <label for="shuf">The words you have</label>
+        <textarea id="shuf" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="All 12, 15, 18, 21 or 24 words, in any order"></textarea>
+        <p class="hint">Every word is correct but the order is unknown. 8 positions take seconds, 10 take minutes, 12 take hours.</p>
+      </div>
+      <div class="field">
+        <label for="permpos">Positions to shuffle</label>
+        <input id="permpos" type="text" inputmode="text" autocomplete="off" placeholder="blank = all, or 5-12 or 2,4,7-10">
+        <p class="hint">If you are sure of some positions, leave them out. Fewer positions means a much faster search.</p>
+      </div>
+      <div class="field">
+        <label for="stargets">An address from this wallet</label>
+        <textarea id="stargets" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="bc1q… or 3… or 1… (one per line)"></textarea>
+      </div>
+      <details class="more"><summary>More options</summary>
+        <div class="inner">
+          <div class="row">
+            <div class="field"><label for="spass">Passphrase</label><input id="spass" type="password" autocomplete="off" placeholder="leave blank if none"></div>
+            <div class="field"><label for="smaxidx">Check address index up to</label><input id="smaxidx" type="number" value="0" min="0" max="20" inputmode="numeric"></div>
+          </div>
+          <div class="field"><span class="lab">Address types</span>
+            <div class="chips">
+              <label class="chip"><input type="checkbox" id="s84" checked><span>bc1q</span></label>
+              <label class="chip"><input type="checkbox" id="s49" checked><span>3…</span></label>
+              <label class="chip"><input type="checkbox" id="s44" checked><span>1…</span></label>
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="pane" id="pane-derive" role="tabpanel" aria-labelledby="tab-derive" hidden>
+      <div class="example" id="ex-derive"><span>Example loaded: a public test key.</span><button type="button" data-clear="dseed,ex-derive">Clear</button></div>
+      <div class="field">
+        <label for="dseed">Phrase, or xpub / ypub / zpub</label>
+        <textarea id="dseed" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="12 to 24 words, or zpub6r…">zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs</textarea>
+        <p class="hint">Lists the receiving addresses so you can compare them with your records. A public key never exposes spending keys.</p>
+      </div>
+      <div class="row">
+        <div class="field"><label for="dcount">How many addresses</label><input id="dcount" type="number" value="10" min="1" max="100" inputmode="numeric"></div>
+        <div class="field"><label for="dpass">Passphrase (phrase only)</label><input id="dpass" type="password" autocomplete="off" placeholder="leave blank if none"></div>
+      </div>
+      <div class="field"><span class="lab">Address types (phrase only)</span>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" id="d84" checked><span>bc1q</span></label>
+          <label class="chip"><input type="checkbox" id="d49"><span>3…</span></label>
+          <label class="chip"><input type="checkbox" id="d44"><span>1…</span></label>
+        </div>
+      </div>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite">Loading the BIP39 wordlist…</div>
+    <div id="notes" class="notes" hidden></div>
+    <div class="bar" id="bar" hidden><i></i></div>
+    <div id="results"></div>
+
+    <details class="check"><summary>Check the tool</summary>
+      <div class="inner">
+        <p class="hint">Runs published test vectors (BIP39, BIP44, BIP49, BIP84) and a small search, so you can see the maths is right before you trust a result.</p>
+        <div><button class="ghost" id="selftest" type="button">Run self-test</button></div>
+        <div class="tests" id="tests"></div>
+      </div>
+    </details>
+    <p class="foot">Keep your phrase private. Anyone who has it can spend the coins. Close this page when you are done.</p>
+  </main>
+
+  <div class="actions">
+    <button class="primary" id="go" disabled>Start search</button>
+    <button class="secondary" id="stop" hidden>Stop</button>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+</div>
+
+<script id="sr-bundle">
+/* Seed Rescue core: BIP39 checksum, BIP32 derivation, address encoding, search.
+   No dependencies. Uses WebCrypto for PBKDF2 and HMAC-SHA512. Runs on the page and inside workers. */
+var SR = (function () {
+'use strict';
+const subtle = (globalThis.crypto || self.crypto).subtle;
+const TE = new TextEncoder();
+
+/* ---------- wordlist ---------- */
+let WL = null, WIDX = null;
+function setWordlist(a) {
+  if (!Array.isArray(a) || a.length !== 2048) throw new Error('The BIP39 wordlist must have 2048 words.');
+  for (let i = 0; i < 2048; i++) {
+    if (typeof a[i] !== 'string' || !/^[a-z]{3,8}$/.test(a[i])) throw new Error('The BIP39 wordlist has an invalid entry.');
+    if (i && a[i - 1] >= a[i]) throw new Error('The BIP39 wordlist is not in order.');
+  }
+  if (a[0] !== 'abandon' || a[2047] !== 'zoo') throw new Error('This is not the BIP39 English wordlist.');
+  WL = a; WIDX = new Map(a.map((w, i) => [w, i]));
+}
+
+/* ---------- SHA-256 ---------- */
+function primes(n) { const p = []; for (let x = 2; p.length < n; x++) { let ok = true; for (const q of p) { if (q * q > x) break; if (x % q === 0) { ok = false; break; } } if (ok) p.push(x); } return p; }
+const P64 = primes(64);
+const K256 = new Uint32Array(64), H0 = new Uint32Array(8);
+P64.forEach((p, i) => { const c = Math.cbrt(p); K256[i] = Math.floor((c - Math.floor(c)) * 4294967296); });
+P64.slice(0, 8).forEach((p, i) => { const s = Math.sqrt(p); H0[i] = Math.floor((s - Math.floor(s)) * 4294967296); });
+const W256 = new Uint32Array(64), ST = new Int32Array(8);
+function sha256Block(w) {
+  for (let i = 16; i < 64; i++) {
+    const a = w[i - 15], b = w[i - 2];
+    w[i] = (w[i - 16] + (((a >>> 7) | (a << 25)) ^ ((a >>> 18) | (a << 14)) ^ (a >>> 3)) + w[i - 7] + (((b >>> 17) | (b << 15)) ^ ((b >>> 19) | (b << 13)) ^ (b >>> 10))) | 0;
+  }
+  let a = ST[0], b = ST[1], c = ST[2], d = ST[3], e = ST[4], f = ST[5], g = ST[6], h = ST[7];
+  for (let i = 0; i < 64; i++) {
+    const t1 = (h + (((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7))) + ((e & f) ^ (~e & g)) + K256[i] + w[i]) | 0;
+    const t2 = ((((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10))) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+    h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+  }
+  ST[0] += a; ST[1] += b; ST[2] += c; ST[3] += d; ST[4] += e; ST[5] += f; ST[6] += g; ST[7] += h;
+}
+function sha256(m) {
+  const l = m.length, nb = (l + 9 + 63) >> 6, w = W256;
+  for (let i = 0; i < 8; i++) ST[i] = H0[i];
+  for (let blk = 0; blk < nb; blk++) {
+    w.fill(0, 0, 16);
+    const base = blk * 64;
+    for (let i = 0; i < 64; i++) {
+      const p = base + i; let byte = 0;
+      if (p < l) byte = m[p]; else if (p === l) byte = 0x80;
+      w[i >> 2] |= byte << (24 - ((i & 3) << 3));
+    }
+    if (blk === nb - 1) { w[14] = Math.floor(l / 536870912); w[15] = (l << 3) >>> 0; }
+    sha256Block(w);
+  }
+  const out = new Uint8Array(32);
+  for (let i = 0; i < 8; i++) { const v = ST[i] >>> 0; out[i * 4] = v >>> 24; out[i * 4 + 1] = (v >>> 16) & 255; out[i * 4 + 2] = (v >>> 8) & 255; out[i * 4 + 3] = v & 255; }
+  return out;
+}
+
+/* ---------- RIPEMD-160 (single block) ---------- */
+const RL = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 7,4,13,1,10,6,15,3,12,0,9,5,2,14,11,8, 3,10,14,4,9,15,8,1,2,7,0,6,13,11,5,12, 1,9,11,10,0,8,12,4,13,3,7,15,14,5,6,2, 4,0,5,9,7,12,2,10,14,1,3,8,11,6,15,13];
+const RR = [5,14,7,0,9,2,11,4,13,6,15,8,1,10,3,12, 6,11,3,7,0,13,5,10,14,15,8,12,4,9,1,2, 15,5,1,3,7,14,6,9,11,8,12,2,10,0,4,13, 8,6,4,1,3,11,15,0,5,12,2,13,9,7,10,14, 12,15,10,4,1,5,8,7,6,2,13,14,0,3,9,11];
+const SL = [11,14,15,12,5,8,7,9,11,13,14,15,6,7,9,8, 7,6,8,13,11,9,7,15,7,12,15,9,11,7,13,12, 11,13,6,7,14,9,13,15,14,8,13,6,5,12,7,5, 11,12,14,15,14,15,9,8,9,14,5,6,8,6,5,12, 9,15,5,11,6,8,13,12,5,12,13,14,11,8,5,6];
+const SRt = [8,9,9,11,13,15,15,5,7,7,8,11,14,14,12,6, 9,13,15,7,12,8,9,11,7,7,12,7,6,15,13,11, 9,7,15,11,8,6,6,14,12,13,5,14,13,13,7,5, 15,5,8,11,14,14,6,14,6,9,12,9,12,5,15,8, 8,5,12,9,12,5,14,6,8,13,6,5,15,13,11,11];
+const KL = [0, 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xA953FD4E], KR = [0x50A28BE6, 0x5C4DD124, 0x6D703EF3, 0x7A6D76E9, 0];
+function rol(x, n) { return (x << n) | (x >>> (32 - n)); }
+function rf(r, x, y, z) {
+  switch (r) { case 0: return x ^ y ^ z; case 1: return (x & y) | (~x & z); case 2: return (x | ~y) ^ z; case 3: return (x & z) | (y & ~z); default: return x ^ (y | ~z); }
+}
+function ripemd160(m) {
+  const l = m.length; if (l > 55) throw new Error('ripemd160: input too long');
+  const X = new Uint32Array(16);
+  for (let i = 0; i < l; i++) X[i >> 2] |= m[i] << ((i & 3) << 3);
+  X[l >> 2] |= 0x80 << ((l & 3) << 3);
+  X[14] = l << 3;
+  const h0 = 0x67452301 | 0, h1 = 0xefcdab89 | 0, h2 = 0x98badcfe | 0, h3 = 0x10325476 | 0, h4 = 0xc3d2e1f0 | 0;
+  let al = h0, bl = h1, cl = h2, dl = h3, el = h4, ar = h0, br = h1, cr = h2, dr = h3, er = h4;
+  for (let j = 0; j < 80; j++) {
+    const rd = j >> 4;
+    let T = (al + rf(rd, bl, cl, dl) + X[RL[j]] + KL[rd]) | 0;
+    T = (rol(T, SL[j]) + el) | 0; al = el; el = dl; dl = rol(cl, 10); cl = bl; bl = T;
+    T = (ar + rf(4 - rd, br, cr, dr) + X[RR[j]] + KR[rd]) | 0;
+    T = (rol(T, SRt[j]) + er) | 0; ar = er; er = dr; dr = rol(cr, 10); cr = br; br = T;
+  }
+  const t = (h1 + cl + dr) | 0;
+  const n1 = (h2 + dl + er) | 0, n2 = (h3 + el + ar) | 0, n3 = (h4 + al + br) | 0, n4 = (h0 + bl + cr) | 0;
+  const w = [t, n1, n2, n3, n4], out = new Uint8Array(20);
+  for (let i = 0; i < 5; i++) { out[i * 4] = w[i] & 255; out[i * 4 + 1] = (w[i] >>> 8) & 255; out[i * 4 + 2] = (w[i] >>> 16) & 255; out[i * 4 + 3] = (w[i] >>> 24) & 255; }
+  return out;
+}
+function hash160(b) { return ripemd160(sha256(b)); }
+
+/* ---------- Base58Check and Bech32 ---------- */
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function b58encode(bytes) {
+  let n = 0n; for (const b of bytes) n = (n << 8n) | BigInt(b);
+  let s = ''; while (n > 0n) { s = B58[Number(n % 58n)] + s; n /= 58n; }
+  for (const b of bytes) { if (b === 0) s = '1' + s; else break; }
+  return s;
+}
+function b58decode(s) {
+  let n = 0n; for (const ch of s) { const v = B58.indexOf(ch); if (v < 0) throw new Error('Not a valid Base58 string.'); n = n * 58n + BigInt(v); }
+  const out = []; while (n > 0n) { out.unshift(Number(n & 255n)); n >>= 8n; }
+  for (const ch of s) { if (ch === '1') out.unshift(0); else break; }
+  return Uint8Array.from(out);
+}
+function b58check(payload) {
+  const c = sha256(sha256(payload)).slice(0, 4), o = new Uint8Array(payload.length + 4);
+  o.set(payload); o.set(c, payload.length); return b58encode(o);
+}
+function b58checkDecode(s) {
+  const raw = b58decode(s); if (raw.length < 5) throw new Error('Too short.');
+  const p = raw.slice(0, -4), c = sha256(sha256(p));
+  for (let i = 0; i < 4; i++) if (c[i] !== raw[raw.length - 4 + i]) throw new Error('The checksum is wrong. Check for a typo in the key.');
+  return p;
+}
+const B32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+function polymod(v) {
+  const G = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]; let chk = 1;
+  for (const x of v) { const b = chk >>> 25; chk = ((chk & 0x1ffffff) << 5) ^ x; for (let i = 0; i < 5; i++) if ((b >>> i) & 1) chk ^= G[i]; }
+  return chk >>> 0;
+}
+function bech32v0(hrp, prog) {
+  const data = [0]; let acc = 0, bits = 0;
+  for (const b of prog) { acc = (acc << 8) | b; bits += 8; while (bits >= 5) { bits -= 5; data.push((acc >> bits) & 31); } acc &= (1 << bits) - 1; }
+  if (bits) data.push((acc << (5 - bits)) & 31);
+  const exp = []; for (const c of hrp) exp.push(c.charCodeAt(0) >> 5); exp.push(0); for (const c of hrp) exp.push(c.charCodeAt(0) & 31);
+  const mod = polymod(exp.concat(data, [0, 0, 0, 0, 0, 0])) ^ 1;
+  for (let i = 0; i < 6; i++) data.push((mod >>> (5 * (5 - i))) & 31);
+  return hrp + '1' + data.map(d => B32[d]).join('');
+}
+
+/* ---------- secp256k1 ---------- */
+const P = 2n ** 256n - 2n ** 32n - 977n;
+const N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+const GX = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n;
+const GY = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n;
+const md = a => { const r = a % P; return r >= 0n ? r : r + P; };
+function powmod(b, e, m) { let r = 1n; b %= m; while (e > 0n) { if (e & 1n) r = r * b % m; b = b * b % m; e >>= 1n; } return r; }
+const INF = null;
+function jdouble(p) {
+  if (p === INF) return INF; const [X, Y, Z] = p; if (Y === 0n) return INF;
+  const YY = md(Y * Y), S = md(4n * X * YY), M = md(3n * X * X), X2 = md(M * M - 2n * S);
+  return [X2, md(M * (S - X2) - 8n * YY * YY), md(2n * Y * Z)];
+}
+function jadd(p, q) {
+  if (p === INF) return q; if (q === INF) return p;
+  const [X1, Y1, Z1] = p, [X2, Y2, Z2] = q;
+  const Z1Z1 = md(Z1 * Z1), Z2Z2 = md(Z2 * Z2), U1 = md(X1 * Z2Z2), U2 = md(X2 * Z1Z1), S1 = md(Y1 * Z2 * Z2Z2), S2 = md(Y2 * Z1 * Z1Z1);
+  if (U1 === U2) return S1 === S2 ? jdouble(p) : INF;
+  const H = md(U2 - U1), R = md(S2 - S1), HH = md(H * H), HHH = md(H * HH), V = md(U1 * HH), X3 = md(R * R - HHH - 2n * V);
+  return [X3, md(R * (V - X3) - S1 * HHH), md(H * Z1 * Z2)];
+}
+function mulG(k) {
+  let r = INF; const base = [GX, GY, 1n];
+  for (let i = BigInt(k.toString(2).length) - 1n; i >= 0n; i--) { r = jdouble(r); if ((k >> i) & 1n) r = jadd(r, base); }
+  return r;
+}
+function toAffine(p) { if (p === INF) throw new Error('Point at infinity.'); const zi = powmod(p[2], P - 2n, P), z2 = zi * zi % P; return [p[0] * z2 % P, p[1] * z2 % P * zi % P]; }
+function big32(n) { const o = new Uint8Array(32); for (let i = 31; i >= 0; i--) { o[i] = Number(n & 255n); n >>= 8n; } return o; }
+function fromBytes(b) { let n = 0n; for (const x of b) n = (n << 8n) | BigInt(x); return n; }
+function compress(aff) { const o = new Uint8Array(33); o[0] = (aff[1] & 1n) ? 3 : 2; o.set(big32(aff[0]), 1); return o; }
+function decompress(b) {
+  if (b.length !== 33 || (b[0] !== 2 && b[0] !== 3)) throw new Error('Not a compressed public key.');
+  const x = fromBytes(b.slice(1)); let y = powmod(md(x * x * x + 7n), (P + 1n) / 4n, P);
+  if (md(y * y) !== md(x * x * x + 7n)) throw new Error('The public key is not on the curve.');
+  if ((y & 1n) !== BigInt(b[0] & 1)) y = P - y; return [x, y];
+}
+function pubOf(k) { return compress(toAffine(mulG(k))); }
+
+/* ---------- BIP32 ---------- */
+async function hmac512(key, data) {
+  const k = await subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+  return new Uint8Array(await subtle.sign('HMAC', k, data));
+}
+async function seedFromPhrase(phrase, pass) {
+  const k = await subtle.importKey('raw', TE.encode(phrase.normalize('NFKD')), 'PBKDF2', false, ['deriveBits']);
+  return new Uint8Array(await subtle.deriveBits({ name: 'PBKDF2', salt: TE.encode(('mnemonic' + (pass || '')).normalize('NFKD')), iterations: 2048, hash: 'SHA-512' }, k, 512));
+}
+async function masterFromSeed(seed) { const I = await hmac512(TE.encode('Bitcoin seed'), seed); return { k: fromBytes(I.slice(0, 32)), c: I.slice(32) }; }
+async function childPriv(node, i) {
+  const d = new Uint8Array(37);
+  if (i >= 0x80000000) { d.set(big32(node.k), 1); } else { node.pub = node.pub || pubOf(node.k); d.set(node.pub, 0); }
+  d[33] = i >>> 24; d[34] = (i >>> 16) & 255; d[35] = (i >>> 8) & 255; d[36] = i & 255;
+  const I = await hmac512(node.c, d);
+  return { k: (fromBytes(I.slice(0, 32)) + node.k) % N, c: I.slice(32) };
+}
+async function childPub(node, i) { // node: { pub: compressed Uint8Array, c }
+  const d = new Uint8Array(37); d.set(node.pub, 0);
+  d[33] = i >>> 24; d[34] = (i >>> 16) & 255; d[35] = (i >>> 8) & 255; d[36] = i & 255;
+  const I = await hmac512(node.c, d), il = fromBytes(I.slice(0, 32)), par = decompress(node.pub);
+  const pt = jadd(mulG(il), [par[0], par[1], 1n]);
+  return { pub: compress(toAffine(pt)), c: I.slice(32) };
+}
+const H = 0x80000000;
+async function accountChain(root, type) {
+  let n = root; for (const i of [type + H, H, H, 0]) n = await childPriv(n, i); return n;
+}
+
+/* ---------- addresses ---------- */
+function addrFromPub(type, pub) {
+  const h = hash160(pub);
+  if (type === 84) return bech32v0('bc', h);
+  if (type === 49) { const r = new Uint8Array(22); r[1] = 20; r.set(h, 2); const p = new Uint8Array(21); p[0] = 5; p.set(hash160(r), 1); return b58check(p); }
+  const p = new Uint8Array(21); p.set(h, 1); return b58check(p);
+}
+const TYPE_LABEL = { 84: 'bc1q (native SegWit)', 49: '3… (wrapped SegWit)', 44: '1… (legacy)' };
+function typeOfAddress(a) { if (/^bc1q/i.test(a)) return 84; if (/^3/.test(a)) return 49; if (/^1/.test(a)) return 44; return 0; }
+
+/* ---------- phrases ---------- */
+function norm(s) { return s.normalize('NFKD').toLowerCase().split(/\s+/).filter(Boolean); }
+const CSB = new Uint8Array(32);
+function checksumOk(idx) {
+  const n = idx.length, csBits = n / 3, entBytes = (n * 11 - csBits) / 8;
+  let acc = 0, bits = 0, bi = 0;
+  for (let i = 0; i < n; i++) {
+    acc = (acc << 11) | idx[i]; bits += 11;
+    while (bits >= 8 && bi < entBytes) { bits -= 8; CSB[bi++] = (acc >>> bits) & 255; }
+    acc &= (1 << bits) - 1;
+  }
+  const d = sha256(CSB.subarray(0, entBytes));
+  return (d[0] >> (8 - csBits)) === acc;
+}
+function lev(a, b) {
+  const m = a.length, n = b.length, d = []; for (let j = 0; j <= n; j++) d[j] = j;
+  for (let i = 1; i <= m; i++) { let prev = d[0]; d[0] = i; for (let j = 1; j <= n; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; } }
+  return d[n];
+}
+function closeWords(tok) {
+  const maxd = tok.length <= 4 ? 1 : 2, out = [];
+  for (let i = 0; i < 2048; i++) {
+    const w = WL[i]; let d;
+    if (tok.length >= 3 && w.startsWith(tok)) d = 0;
+    else { if (Math.abs(w.length - tok.length) > maxd) continue; d = lev(tok, w); if (d > maxd) continue; d += 1; }
+    out.push([d, i]);
+  }
+  out.sort((x, y) => x[0] - y[0]); return out.slice(0, 24).map(x => x[1]);
+}
+const ALL = Array.from({ length: 2048 }, (_, i) => i);
+function factorial(n) { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/* o: { permSet: Set of 0-based positions to shuffle, or null to use ~word marks; fuzz: bool } */
+function makePlan(tokens, o) {
+  const n = tokens.length;
+  if (![12, 15, 18, 21, 24].includes(n)) return { error: 'Found ' + n + ' words. A phrase has 12, 15, 18, 21 or 24 words, and each ? counts as one.' };
+  const fixed = new Array(n).fill(null), free = [], permPos = [], permWords = [], notes = [];
+  let wild = 0;
+  for (let p = 0; p < n; p++) {
+    let t = tokens[p]; const isPerm = o.permSet ? o.permSet.has(p) : t[0] === '~';
+    if (t[0] === '~') t = t.slice(1);
+    if (t === '?') {
+      if (isPerm) return { error: 'Word ' + (p + 1) + ' is a missing word, so it can’t be part of the shuffle.' };
+      free.push({ pos: p, opts: ALL }); wild++; continue;
+    }
+    if (WIDX.has(t)) { if (isPerm) { permPos.push(p); permWords.push(WIDX.get(t)); } else fixed[p] = WIDX.get(t); continue; }
+    const c = closeWords(t);
+    if (isPerm || !o.fuzz) {
+      const hint = c.length ? ' Did you mean ' + c.slice(0, 3).map(i => WL[i]).join(', ') + '?' : '';
+      return { error: 'Word ' + (p + 1) + ', “' + t + '”, is not in the BIP39 list.' + hint + (isPerm ? '' : ' Turn on “Fix typos” to search close matches.') };
+    }
+    if (!c.length) return { error: 'Word ' + (p + 1) + ', “' + t + '”, is not close to any BIP39 word.' };
+    free.push({ pos: p, opts: c }); notes.push('Word ' + (p + 1) + ' (“' + t + '”): trying ' + c.length + ' close words');
+  }
+  let total = 1; for (const f of free) total *= f.opts.length;
+  const cnt = {}; for (const w of permWords) cnt[w] = (cnt[w] || 0) + 1;
+  let perms = factorial(permWords.length); for (const k in cnt) perms /= factorial(cnt[k]);
+  total *= perms;
+  return { n, fixed, free, permPos, permWords, total, notes, wild, csBits: n / 3 };
+}
+function nextPerm(a) {
+  let i = a.length - 2; while (i >= 0 && a[i] >= a[i + 1]) i--; if (i < 0) return false;
+  let j = a.length - 1; while (a[j] <= a[i]) j--;
+  let t = a[i]; a[i] = a[j]; a[j] = t;
+  for (let l = i + 1, r = a.length - 1; l < r; l++, r--) { t = a[l]; a[l] = a[r]; a[r] = t; }
+  return true;
+}
+async function testPhrase(idx, cfg) {
+  const phrase = idx.map(i => WL[i]).join(' ');
+  const root = await masterFromSeed(await seedFromPhrase(phrase, cfg.pass));
+  for (const t of cfg.types) {
+    let node = root; for (const i of [t + H, H, H, 0]) node = await childPriv(node, i);
+    for (let i = 0; i <= cfg.maxidx; i++) {
+      const ch = await childPriv(node, i), a = addrFromPub(t, pubOf(ch.k));
+      if (cfg.targets.has(a)) return { phrase, address: a, type: t, index: i, path: "m/" + t + "'/0'/0'/0/" + i };
+    }
+  }
+  return null;
+}
+/* cfg: { id, N, targets:Set, types:[], maxidx, pass }  hooks: { tick(count), found(r) } */
+async function searchRun(plan, cfg, hooks) {
+  const n = plan.n, idx = new Array(n);
+  for (let p = 0; p < n; p++) if (plan.fixed[p] !== null) idx[p] = plan.fixed[p];
+  const free = plan.free, F = free.length, st = new Array(F).fill(0);
+  const pw = plan.permWords.slice().sort((a, b) => a - b), pp = plan.permPos, K = pp.length;
+  let counter = 0, valid = 0;
+  for (;;) {
+    for (let f = 0; f < F; f++) idx[free[f].pos] = free[f].opts[st[f]];
+    const p = pw.slice();
+    do {
+      for (let k = 0; k < K; k++) idx[pp[k]] = p[k];
+      counter++;
+      if ((counter & 4095) === 0) hooks.tick(counter);
+      if (checksumOk(idx)) {
+        if ((valid++ % cfg.N) === cfg.id) {
+          const r = await testPhrase(idx, cfg);
+          if (r) { hooks.found(r); return counter; }
+          hooks.tick(counter);
+        }
+      }
+    } while (K > 1 && nextPerm(p));
+    let f = F - 1; while (f >= 0) { st[f]++; if (st[f] < free[f].opts.length) break; st[f] = 0; f--; }
+    if (f < 0) break;
+  }
+  hooks.tick(counter); return counter;
+}
+
+/* ---------- derive a list of addresses from a phrase or an extended public key ---------- */
+const XVER = new Map([[0x0488B21E, 44], [0x049D7CB2, 49], [0x04B24746, 84]]);
+async function deriveList(input, pass, types, count) {
+  const s = input.trim();
+  if (/^[xyz]pub[1-9A-HJ-NP-Za-km-z]{100,}$/.test(s)) {
+    const raw = b58checkDecode(s); if (raw.length !== 78) throw new Error('That key has the wrong length.');
+    const ver = ((raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8) | raw[3]) >>> 0, type = XVER.get(ver);
+    if (!type) throw new Error('Unsupported key type.');
+    const pub = raw.slice(45, 78), chain = raw.slice(13, 45);
+    const ext = await childPub({ pub, c: chain }, 0), rows = [];
+    for (let i = 0; i < count; i++) { const ch = await childPub(ext, i); rows.push({ i, address: addrFromPub(type, ch.pub) }); }
+    return [{ type, rows, from: 'key' }];
+  }
+  if (/^[xyz]prv/.test(s)) throw new Error('That is a private key. Paste the public key (xpub, ypub or zpub), or the phrase.');
+  const words = norm(s);
+  if (![12, 15, 18, 21, 24].includes(words.length)) throw new Error('Enter a 12 to 24 word phrase, or an xpub, ypub or zpub.');
+  const idx = words.map(w => { if (!WIDX.has(w)) throw new Error('“' + w + '” is not in the BIP39 list.'); return WIDX.get(w); });
+  if (!checksumOk(idx)) throw new Error('The checksum fails, so this is not a valid phrase. A word is wrong or out of order. Use the Recover tab to search for it.');
+  const root = await masterFromSeed(await seedFromPhrase(words.join(' '), pass)), out = [];
+  for (const t of types) {
+    const chain = await accountChain(root, t), rows = [];
+    for (let i = 0; i < count; i++) { const ch = await childPriv(chain, i); rows.push({ i, address: addrFromPub(t, pubOf(ch.k)) }); }
+    out.push({ type: t, rows, from: 'phrase' });
+  }
+  return out;
+}
+
+/* ---------- self-test against published vectors ---------- */
+async function vectors() {
+  const res = [], push = (name, ok, extra) => res.push({ name, ok: !!ok, extra: extra || '' });
+  const phrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+  const want = { 84: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', 49: '37VucYSaXLCAsxYyAPfbSi9eh4iEcbShgf', 44: '1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA' };
+  const names = { 84: 'BIP84 bc1q address', 49: 'BIP49 3… address', 44: 'BIP44 1… address' };
+  const idx = phrase.split(' ').map(w => WIDX.get(w));
+  push('Phrase checksum', checksumOk(idx) && !checksumOk(idx.slice(0, 11).concat([4])));
+  try {
+    const got = await deriveList(phrase, '', [84, 49, 44], 1);
+    for (const g of got) push(names[g.type], g.rows[0].address === want[g.type], g.rows[0].address === want[g.type] ? '' : g.rows[0].address);
+  } catch (e) { push('Address derivation', false, String(e.message || e)); }
+  const z = 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs';
+  try { const g = await deriveList(z, '', [], 1); push('zpub public derivation', g[0].rows[0].address === want[84], g[0].rows[0].address === want[84] ? '' : g[0].rows[0].address); }
+  catch (e) { push('zpub public derivation', false, String(e.message || e)); }
+  return res;
+}
+
+/* ---------- worker entry ---------- */
+function workerMain() {
+  self.onmessage = async (e) => {
+    const m = e.data; if (m.cmd !== 'run') return;
+    try {
+      setWordlist(m.words);
+      const plan = makePlan(m.tokens, { permSet: m.permSet ? new Set(m.permSet) : null, fuzz: m.fuzz });
+      if (plan.error) { self.postMessage({ t: 'error', msg: plan.error }); return; }
+      let last = 0, found = false;
+      const hooks = {
+        tick(c) { const now = Date.now(); if (now - last > 200) { last = now; self.postMessage({ t: 'p', c, id: m.id }); } },
+        found(r) { found = true; self.postMessage({ t: 'found', r }); }
+      };
+      await searchRun(plan, { id: m.id, N: m.N, targets: new Set(m.targets), types: m.types, maxidx: m.maxidx, pass: m.pass }, hooks);
+      self.postMessage({ t: 'done', id: m.id, found });
+    } catch (err) { self.postMessage({ t: 'error', msg: String((err && err.message) || err) }); }
+  };
+}
+
+return { setWordlist, makePlan, searchRun, deriveList, vectors, workerMain, checksumOk, norm, typeOfAddress, TYPE_LABEL, sha256, ripemd160, b58check, bech32v0, pubOf, seedFromPhrase, wordAt: i => WL[i] };
+})();
+
+</script>
+<script>
+(function () {
+'use strict';
+var $ = function (id) { return document.getElementById(id); };
+function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+var nf = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+function fmt(n) { return n < 10000 ? Math.round(n).toLocaleString('en') : nf.format(n); }
+function dur(s) { if (s < 90) return Math.max(1, Math.round(s)) + ' sec'; if (s < 5400) return Math.round(s / 60) + ' min'; if (s < 172800) return Math.round(s / 3600) + ' hr'; return Math.round(s / 86400) + ' days'; }
+
+var toastT;
+function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 1800); }
+function copyText(t) {
+  try { navigator.clipboard.writeText(t).then(function () { toast('Copied'); }, function () { toast('Copy blocked. Select the text and copy it.'); }); }
+  catch (e) { toast('Copy blocked. Select the text and copy it.'); }
+}
+
+var WORDS = null, mode = 'recover', job = null;
+var LABEL = { recover: 'Start search', shuffle: 'Start search', derive: 'Derive addresses' };
+
+/* ---------- wordlist ---------- */
+function loadWords() {
+  var urls = ['https://cdn.jsdelivr.net/npm/@scure/bip39@1.5.4/esm/wordlists/english.js', 'https://unpkg.com/@scure/bip39@1.5.4/esm/wordlists/english.js'];
+  var i = 0;
+  function next() {
+    if (i >= urls.length) return Promise.reject(new Error('Could not load the BIP39 wordlist. Check your connection and reload.'));
+    return import(urls[i++]).then(function (m) {
+      var w = m.wordlist || m.default; if (typeof w === 'string') w = w.split('\n');
+      SR.setWordlist(w); return w;
+    }).catch(function () { return next(); });
+  }
+  return next();
+}
+function setStatus(msg, err) { var s = $('status'); s.textContent = msg; s.className = 'status' + (err ? ' err' : ''); }
+function showNotes(list) { var n = $('notes'); n.hidden = !list || !list.length; n.textContent = list && list.length ? list.join(' · ') : ''; }
+function clearResults() { $('results').replaceChildren(); showNotes(null); $('bar').hidden = true; setStatus(''); }
+function fail(msg) { setStatus(msg, true); }
+
+/* ---------- tabs and example banners ---------- */
+function setMode(m) {
+  if (job) return;
+  mode = m;
+  ['recover', 'shuffle', 'derive'].forEach(function (k) {
+    $('pane-' + k).hidden = k !== m; $('tab-' + k).setAttribute('aria-selected', k === m ? 'true' : 'false');
+  });
+  $('go').textContent = LABEL[m]; clearResults();
+  if (WORDS) setStatus('');
+}
+document.querySelectorAll('.tab').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
+document.querySelectorAll('[data-clear]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    b.dataset.clear.split(',').forEach(function (id) { var e = $(id); if (e.tagName === 'DIV') e.hidden = true; else e.value = ''; });
+  });
+});
+['phrase', 'targets'].forEach(function (id) { $(id).addEventListener('input', function () { $('ex-recover').hidden = true; }); });
+$('dseed').addEventListener('input', function () { $('ex-derive').hidden = true; });
+
+/* ---------- form reading ---------- */
+function chipTypes(prefix) { return [84, 49, 44].filter(function (t) { return $(prefix + t).checked; }); }
+function parseTargets(text) {
+  var lines = text.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean), out = [], types = [];
+  if (!lines.length) return { error: 'Enter at least one address from this wallet. The search needs it to recognize the right phrase.' };
+  for (var i = 0; i < lines.length; i++) {
+    var a = lines[i];
+    if (/^bc1p/i.test(a)) return { error: 'Taproot addresses (bc1p) are not supported. Use a bc1q, 3 or 1 address from the same wallet.' };
+    if (!/^(bc1q[ac-hj-np-z02-9]{20,80}|[13][1-9A-HJ-NP-Za-km-z]{25,40})$/i.test(a)) return { error: '“' + a.slice(0, 18) + (a.length > 18 ? '…' : '') + '” does not look like a Bitcoin address.' };
+    if (/^bc1/i.test(a)) a = a.toLowerCase();
+    out.push(a); var t = SR.typeOfAddress(a); if (types.indexOf(t) < 0) types.push(t);
+  }
+  return { list: out, types: types };
+}
+function parsePositions(spec, n) {
+  var set = new Set(), parts = spec.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  for (var i = 0; i < parts.length; i++) {
+    var m = /^(\d+)(?:\s*-\s*(\d+))?$/.exec(parts[i]);
+    if (!m) return { error: 'Positions look like 5-12 or 2,4,7-10.' };
+    var a = +m[1], b = m[2] ? +m[2] : a; if (a > b) { var t = a; a = b; b = t; }
+    if (a < 1 || b > n) return { error: 'Positions must be between 1 and ' + n + '.' };
+    for (var k = a; k <= b; k++) set.add(k - 1);
+  }
+  return { set: set };
+}
+function readSearch() {
+  var recover = mode === 'recover';
+  var tokens = SR.norm($(recover ? 'phrase' : 'shuf').value);
+  if (!tokens.length) return { error: recover ? 'Enter your phrase. Use ? for a missing word.' : 'Enter the words you have.' };
+  var tg = parseTargets($(recover ? 'targets' : 'stargets').value); if (tg.error) return tg;
+  var sel = chipTypes(recover ? 'r' : 's'), types = sel.filter(function (t) { return tg.types.indexOf(t) >= 0; });
+  var note = null;
+  if (!types.length) { types = tg.types; note = 'Address types follow the address you entered.'; }
+  var permSet = null;
+  if (!recover) {
+    var spec = $('permpos').value.trim();
+    if (spec) { var pp = parsePositions(spec, tokens.length); if (pp.error) return pp; permSet = pp.set; }
+    else { permSet = new Set(tokens.map(function (_, i) { return i; })); }
+  }
+  var mx = parseInt($(recover ? 'maxidx' : 'smaxidx').value, 10); if (!(mx >= 0)) mx = 0; mx = Math.min(mx, 20);
+  return { tokens: tokens, permSet: permSet, fuzz: recover ? $('fuzz').checked : false, targets: tg.list, types: types, maxidx: mx, pass: $(recover ? 'rpass' : 'spass').value, note: note };
+}
+
+/* ---------- search engine (worker pool) ---------- */
+var WURL = null;
+function workerUrl() {
+  if (!WURL) WURL = URL.createObjectURL(new Blob([$('sr-bundle').textContent + '\n;SR.workerMain();'], { type: 'text/javascript' }));
+  return WURL;
+}
+function runSearch(cfg, plan, cb) {
+  var N = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 8)), ws = [], counts = new Array(N).fill(0), doneN = 0, over = false, t0 = Date.now();
+  function stop() { over = true; ws.forEach(function (w) { w.terminate(); }); ws = []; }
+  try {
+    for (var i = 0; i < N; i++) {
+      (function (id) {
+        var w = new Worker(workerUrl()); ws.push(w);
+        w.onmessage = function (e) {
+          if (over) return; var m = e.data;
+          if (m.t === 'p') { counts[m.id] = m.c; var s = 0; counts.forEach(function (c) { s += c; }); cb.progress(Math.min(1, s / (N * plan.total)), (Date.now() - t0) / 1000, s / N); }
+          else if (m.t === 'found') { stop(); cb.found(m.r); }
+          else if (m.t === 'error') { stop(); cb.error(m.msg); }
+          else if (m.t === 'done') { if (++doneN === N) { stop(); cb.done(); } }
+        };
+        w.onerror = function () { if (over) return; stop(); cb.error('The background worker could not start in this browser.'); };
+        w.postMessage({ cmd: 'run', words: WORDS, tokens: cfg.tokens, permSet: cfg.permSet ? Array.from(cfg.permSet) : null, fuzz: cfg.fuzz, targets: cfg.targets, types: cfg.types, maxidx: cfg.maxidx, pass: cfg.pass, id: id, N: N });
+      })(i);
+    }
+  } catch (err) { stop(); setTimeout(function () { cb.error('Background workers are not available here.'); }, 0); }
+  return { stop: stop, threads: N, t0: t0 };
+}
+
+function running(on) {
+  $('go').hidden = on; $('stop').hidden = !on; $('bar').hidden = !on;
+  document.querySelectorAll('.tab').forEach(function (b) { b.disabled = on; });
+  if (!on) job = null;
+}
+
+function startSearch() {
+  var cfg = readSearch(); if (cfg.error) return fail(cfg.error);
+  var plan = SR.makePlan(cfg.tokens, { permSet: cfg.permSet, fuzz: cfg.fuzz });
+  if (plan.error) return fail(plan.error);
+  if (plan.total > 2e9) return fail('That is ' + fmt(plan.total) + ' arrangements, which is too many to search. Use fewer ? marks or shuffle fewer positions.');
+  var eff = plan.total / Math.pow(2, plan.csBits), notes = plan.notes.slice(); if (cfg.note) notes.push(cfg.note);
+  clearResults(); showNotes(notes); running(true);
+  $('bar').firstElementChild.style.width = '0%';
+  var inputWords = cfg.tokens.map(function (t) { return t.replace(/^~/, ''); });
+  job = runSearch(cfg, plan, {
+    progress: function (f, sec) {
+      $('bar').firstElementChild.style.width = (f * 100).toFixed(1) + '%';
+      var eta = sec > 4 && f > 0.01 ? ' · about ' + dur(sec * (1 - f) / f) + ' left' : '';
+      setStatus('Checking ' + fmt(plan.total) + ' arrangements on ' + job.threads + ' threads · ' + Math.floor(f * 100) + '%' + eta);
+    },
+    found: function (r) { running(false); setStatus('Found a matching phrase.'); renderFound(r, inputWords); },
+    done: function () { running(false); setStatus('Finished. No phrase produced your address.'); renderMiss(); },
+    error: function (m) { running(false); fail(m); }
+  });
+  setStatus('Checking ' + fmt(plan.total) + ' arrangements (about ' + fmt(eff) + ' pass the checksum) on ' + job.threads + ' threads…');
+}
+function stopSearch() { if (job) { job.stop(); running(false); setStatus('Stopped.'); } }
+
+/* ---------- results ---------- */
+function renderFound(r, inputWords) {
+  var c = el('section', 'card ok');
+  c.appendChild(el('span', 'pill ok', 'Match found'));
+  c.appendChild(el('h2', null, 'This phrase produces your address'));
+  var a = el('p', 'addr', r.address); c.appendChild(a);
+  c.appendChild(el('p', 'hint', SR.TYPE_LABEL[r.type] + ' · path ' + r.path));
+  var ol = el('ol', 'words');
+  r.phrase.split(' ').forEach(function (w, i) {
+    var li = el('li', inputWords[i] !== w ? 'chg' : ''); li.appendChild(el('b', null, String(i + 1))); li.appendChild(el('span', null, w)); ol.appendChild(li);
+  });
+  c.appendChild(ol);
+  c.appendChild(el('p', 'hint', 'Highlighted words differ from what you typed.'));
+  var b = el('button', 'ghost', 'Copy phrase'); b.type = 'button'; b.addEventListener('click', function () { copyText(r.phrase); }); b.style.alignSelf = 'flex-start'; c.appendChild(b);
+  c.appendChild(el('p', 'caution', 'Anyone who sees this phrase can spend the coins. Import it into a wallet you trust, move the funds to a new wallet, then close this page.'));
+  $('results').replaceChildren(c);
+}
+function renderMiss() {
+  var c = el('section', 'card');
+  c.appendChild(el('span', 'pill bad', 'No match'));
+  c.appendChild(el('h2', null, 'Nothing produced that address'));
+  var ul = el('ul', 'tips');
+  ['Check the address really belongs to this wallet, and that it is the first address or a low index.',
+   'Raise “Check address index up to” under More options.',
+   'Tick all three address types.',
+   'If you used a passphrase (a 25th word), enter it exactly.',
+   'Words you thought were right may be wrong. Replace one with ? and try again.'].forEach(function (t) { ul.appendChild(el('li', null, t)); });
+  c.appendChild(ul); $('results').replaceChildren(c);
+}
+
+/* ---------- derive ---------- */
+async function startDerive() {
+  var input = $('dseed').value; if (!input.trim()) return fail('Enter a phrase or an xpub, ypub or zpub.');
+  var count = Math.max(1, Math.min(100, parseInt($('dcount').value, 10) || 10)), types = chipTypes('d');
+  var isKey = /^[xyz]pub/.test(input.trim());
+  if (!isKey && !types.length) return fail('Pick at least one address type.');
+  clearResults(); setStatus('Deriving…'); $('go').disabled = true;
+  await new Promise(function (r) { setTimeout(r, 30); });
+  try {
+    var groups = await SR.deriveList(input, $('dpass').value, types, count), out = $('results');
+    groups.forEach(function (g) {
+      var c = el('section', 'card'), head = el('div', 'cardhead');
+      head.appendChild(el('h2', null, SR.TYPE_LABEL[g.type]));
+      var all = el('button', 'ghost', 'Copy all'); all.type = 'button';
+      all.addEventListener('click', function () { copyText(g.rows.map(function (r) { return r.address; }).join('\n')); });
+      head.appendChild(all); c.appendChild(head);
+      var list = el('div', 'list');
+      g.rows.forEach(function (r) {
+        var li = el('div', 'li'); li.appendChild(el('span', 'n', '#' + r.i)); li.appendChild(el('span', 'addr', r.address));
+        var b = el('button', 'ghost', 'Copy'); b.type = 'button'; b.addEventListener('click', function () { copyText(r.address); }); li.appendChild(b); list.appendChild(li);
+      });
+      c.appendChild(list); out.appendChild(c);
+    });
+    setStatus('Showing ' + count + ' receiving addresses' + (groups[0].from === 'key' ? ' from the public key.' : ' per type.'));
+  } catch (e) { fail(e.message || String(e)); }
+  $('go').disabled = false;
+}
+
+/* ---------- self-test ---------- */
+$('selftest').addEventListener('click', async function () {
+  var box = $('tests'); box.replaceChildren(); var btn = $('selftest'); btn.disabled = true;
+  function line(ok, text, extra) { var d = el('div'); d.appendChild(el('span', ok ? 'ok' : 'bad', ok ? 'Pass' : 'Fail')); d.appendChild(el('span', null, text + (extra ? ' (' + extra + ')' : ''))); box.appendChild(d); }
+  try { var v = await SR.vectors(); v.forEach(function (r) { line(r.ok, r.name, r.extra); }); } catch (e) { line(false, 'Vectors', String(e.message || e)); }
+  var p = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon ?';
+  var cfg = { tokens: SR.norm(p), permSet: null, fuzz: true, targets: ['bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'], types: [84], maxidx: 0, pass: '' };
+  var plan = SR.makePlan(cfg.tokens, { permSet: null, fuzz: true });
+  await new Promise(function (res) {
+    var h = runSearch(cfg, plan, {
+      progress: function () {},
+      found: function (r) { line(/ about$/.test(r.phrase), 'Search recovers a missing word', r.phrase.split(' ').pop()); res(); },
+      done: function () { line(false, 'Search recovers a missing word', 'nothing found'); res(); },
+      error: function (m) { line(false, 'Search recovers a missing word', m); res(); }
+    });
+  });
+  btn.disabled = false;
+});
+
+/* ---------- wire up ---------- */
+$('go').addEventListener('click', function () { if (mode === 'derive') startDerive(); else startSearch(); });
+$('stop').addEventListener('click', stopSearch);
+loadWords().then(function (w) { WORDS = w; $('go').disabled = false; setStatus(''); })
+  .catch(function (e) { setStatus(e.message, true); });
+})();
+</script>
+
+</body>
+</html>
